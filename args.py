@@ -207,8 +207,6 @@ class Args:
             menu_mode == Menu.SINGLE
         ), "menu mode must be consistent with multi flag"
 
-        choices = list(choices)
-
         arg: str | list[str] | None = self.get(multi=multi, long=long)
 
         if arg is None or multi and arg == []:
@@ -229,19 +227,22 @@ class Args:
                 ]
                 if len(invalid_args) == 1:
                     print(
-                        f"invalid arg: '{arg[0]}' (select from {choices})", file=stderr
+                        f"invalid arg: '{arg[0]}' (select from {list(choices)})",
+                        file=stderr,
                     )
                     exit(1)
                 elif len(invalid_args) > 1:
                     # ew
                     squote: str = "'"
                     print(
-                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {choices})",
+                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {list(choices)})",
                         file=stderr,
                     )
 
             elif cast(str, arg) not in choices:
-                print(f"invalid arg: '{arg}' (select from {choices})", file=stderr)
+                print(
+                    f"invalid arg: '{arg}' (select from {list(choices)})", file=stderr
+                )
                 exit(1)
 
         return arg
