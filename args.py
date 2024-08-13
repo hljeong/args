@@ -238,6 +238,7 @@ class Args:
                         f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {list(choices)})",
                         file=stderr,
                     )
+                    exit(1)
 
             elif cast(str, arg) not in choices:
                 print(
