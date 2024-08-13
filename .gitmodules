@@ -1,3 +1,4 @@
 [submodule "menu"]
 	path = menu
 	url = https://github.com/hljeong/menu
+	ignore = dirty
