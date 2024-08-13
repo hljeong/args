@@ -207,6 +207,8 @@ class Args:
             menu_mode == Menu.SINGLE
         ), "menu mode must be consistent with multi flag"
 
+        choices = list(choices)
+
         arg: str | list[str] | None = self.get(multi=multi, long=long)
 
         if arg is None or multi and arg == []:
