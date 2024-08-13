@@ -1,7 +1,14 @@
 from typing import Iterable, cast
 from sys import argv, stderr
+from rich import print
 
 from menu.menu import Menu, select
+
+
+def err(msg: str, do_exit: bool = True):
+    print(f"[red]{msg}[/red]", file=stderr)
+    if do_exit:
+        exit(1)
 
 
 class Args:
@@ -63,9 +70,7 @@ class Args:
         self._args = args
 
     def _err(self, msg: str):
-        print(f"{msg}:", file=stderr)
-        print(f"  {self:c}", file=stderr)
-        exit(1)
+        err(f"{msg}:\n  {self:c}")
 
     def _at_start(self) -> bool:
         # sanity check
@@ -134,9 +139,7 @@ class Args:
         while not self._at_end():
             if self._match(","):
                 if long_arg == []:
-                    print("invalid long arg:", file=stderr)
-                    print(f"  {self:c}", file=stderr)
-                    exit(1)
+                    err(f"invalid long arg:\n  {self:c}")
 
                 self._backtrack()
                 long_arg.pop(-1)
@@ -226,24 +229,16 @@ class Args:
                     an_arg for an_arg in arg if an_arg not in choices
                 ]
                 if len(invalid_args) == 1:
-                    print(
-                        f"invalid arg: '{arg[0]}' (select from {list(choices)})",
-                        file=stderr,
-                    )
-                    exit(1)
+                    err(f"invalid arg: '{arg[0]}' (select from {list(choices)})")
+
                 elif len(invalid_args) > 1:
                     # ew
                     squote: str = "'"
-                    print(
-                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {list(choices)})",
-                        file=stderr,
+                    err(
+                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {list(choices)})"
                     )
-                    exit(1)
 
             elif cast(str, arg) not in choices:
-                print(
-                    f"invalid arg: '{arg}' (select from {list(choices)})", file=stderr
-                )
-                exit(1)
+                err(f"invalid arg: '{arg}' (select from {list(choices)})")
 
         return arg
