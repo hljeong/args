@@ -226,18 +226,23 @@ class Args:
                     an_arg for an_arg in arg if an_arg not in choices
                 ]
                 if len(invalid_args) == 1:
-                    print(f"invalid arg: '{arg[0]}'", file=stderr)
+                    print(
+                        f"invalid arg: '{arg[0]}' (select from {choices})", file=stderr
+                    )
                     exit(1)
                 elif len(invalid_args) > 1:
                     # ew
                     squote: str = "'"
                     print(
-                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))}",
+                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {choices})",
                         file=stderr,
                     )
 
             elif cast(str, arg) not in choices:
-                print(f"invalid arg: '{arg}'", file=stderr)
+                print(f"invalid arg: '{arg}' (select from {choices})", file=stderr)
                 exit(1)
 
         return arg
+
+
+Args().get_or_select(["hello", "bye"], multi=True, menu_mode=Menu.MULTI)
