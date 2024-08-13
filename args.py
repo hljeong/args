@@ -241,6 +241,3 @@ class Args:
                 exit(1)
 
         return arg
-
-
-Args().get_or_select(["hello", "bye"], multi=True, menu_mode=Menu.MULTI)
