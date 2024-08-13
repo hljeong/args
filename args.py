@@ -1,4 +1,7 @@
+from typing import Iterable, cast
 from sys import argv, stderr
+
+from menu.menu import Menu, select
 
 
 class Args:
@@ -174,7 +177,7 @@ class Args:
 
         return multi_arg
 
-    def get(self, long: bool = False, multi: bool = False) -> str | list[str] | None:
+    def get(self, multi: bool = False, long: bool = False) -> str | list[str] | None:
         if not multi and not long:
             return self._get()
 
@@ -188,3 +191,56 @@ class Args:
             return self._get_multi_long()
 
         assert False
+
+    def get_or_select(
+        self,
+        choices: Iterable[str],
+        multi: bool = False,
+        long: bool = False,
+        menu_mode: object = Menu.SINGLE,
+        menu_prompt: str | None = None,
+        menu_use_descriptions: bool = False,
+        check_validity: bool = True,
+        exit_on_none: bool = True,
+    ) -> str | list[str] | None:
+        assert multi ^ (
+            menu_mode == Menu.SINGLE
+        ), "menu mode must be consistent with multi flag"
+
+        arg: str | list[str] | None = self.get(multi=multi, long=long)
+
+        if arg is None or multi and arg == []:
+            arg = select(
+                choices,
+                mode=menu_mode,
+                prompt=menu_prompt,
+                use_descriptions=menu_use_descriptions,
+            )
+
+            if arg is None and exit_on_none:
+                exit(1)
+
+        elif check_validity:
+            if multi:
+                invalid_args: list[str] = [
+                    an_arg for an_arg in arg if an_arg not in choices
+                ]
+                if len(invalid_args) == 1:
+                    print(f"invalid arg: '{arg[0]}'", file=stderr)
+                    exit(1)
+                elif len(invalid_args) > 1:
+                    # ew
+                    squote: str = "'"
+                    print(
+                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))}",
+                        file=stderr,
+                    )
+
+            elif cast(str, arg) not in choices:
+                print(f"invalid arg: '{arg}'", file=stderr)
+                exit(1)
+
+        return arg
+
+
+Args().get_or_select(["hello", "bye"], multi=True, menu_mode=Menu.MULTI)
