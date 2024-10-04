@@ -1,6 +1,7 @@
 from typing import Iterable, cast
 from sys import argv, stderr
 from rich import print
+from dataclasses import dataclass
 
 from menu.menu import Menu, select
 
@@ -12,10 +13,21 @@ def err(msg: str, do_exit: bool = True):
 
 
 class Args:
-    DELIMITERS: set[str] = {".", ","}
+    @dataclass
+    class Delimiters:
+        comma: str = ","
+        dot: str = "."
 
-    def __init__(self, args: list[str] | None = None):
+        def __iter__(self):
+            return iter({self.comma, self.dot})
+
+    DEFAULT_DELIMITERS: Delimiters = Delimiters()
+
+    def __init__(
+        self, args: list[str] | None = None, delimiters: Delimiters = DEFAULT_DELIMITERS
+    ):
         self._args: list[str] = args or argv[1:]
+        self._delimiters: Args.Delimiters = delimiters
         self._preprocess()
         self._idx: int = 0
         self._n: int = len(self._args)
@@ -23,7 +35,7 @@ class Args:
     def __str__(self) -> str:
         line: list[str] = []
         for i in range(self._n):
-            if i > 0 and self._args[i] != ",":
+            if i > 0 and self._args[i] != self._delimiters.comma:
                 line.append(" ")
             line.append(self._args[i])
 
@@ -32,7 +44,7 @@ class Args:
     def __format__(self, spec: str) -> str:
         line: list[str] = []
         for i in range(self._n):
-            if i > 0 and self._args[i] != ",":
+            if i > 0 and self._args[i] != self._delimiters.comma:
                 line.append(" ")
             if spec == "c" and i == self._idx:
                 line.append(f"[{self._args[i]}]")
@@ -54,16 +66,22 @@ class Args:
             s: str = self._args[idx]
             m: int = len(s)
             while r < m:
-                if s[r] in Args.DELIMITERS:
-                    if r > l:
-                        args.append(s[l:r])
-                    args.append(s[r])
-                    l = r = r + 1
+                if s[r:].startswith(self._delimiters.comma) or s[r:].startswith(
+                    self._delimiters.dot
+                ):
+                    if len(arg := s[l:r].strip()) > 0:
+                        args.append(arg)
+                    if s[r:].startswith(self._delimiters.comma):
+                        args.append(self._delimiters.comma)
+                        l = r = r + len(self._delimiters.comma)
+                    else:
+                        args.append(self._delimiters.dot)
+                        l = r = r + len(self._delimiters.dot)
                 else:
                     r += 1
 
-            if r > l:
-                args.append(self._args[idx][l:r])
+            if len(arg := s[l:r].strip()) > 0:
+                args.append(arg)
 
             idx += 1
 
@@ -109,25 +127,32 @@ class Args:
         return match
 
     def _get(self) -> str | None:
-        if self._at_end() or self._match_consume("."):
+        if self._at_end() or self._match_consume(self._delimiters.dot):
             return None
 
-        return self._consume()
+        arg = self._consume()
+        if not self._at_end():
+            self._match_consume(self._delimiters.dot)
+        return arg
 
     def _get_multi(self) -> list[str]:
-        if self._at_end() or self._match_consume("."):
+        if self._at_end() or self._match_consume(self._delimiters.dot):
             return []
 
         multi_args: list[str] = []
-        if self._match(","):
+        if self._match(self._delimiters.comma):
             self._err("invalid multi arg")
         multi_args.append(self._consume())
 
-        while not self._at_end() and not self._match_consume("."):
-            if not self._match_consume(","):
+        while not self._at_end() and not self._match_consume(self._delimiters.dot):
+            if not self._match_consume(self._delimiters.comma):
                 break
 
-            if self._at_end() or self._match(",") or self._match("."):
+            if (
+                self._at_end()
+                or self._match(self._delimiters.comma)
+                or self._match(self._delimiters.dot)
+            ):
                 self._err("invalid multi arg")
 
             multi_args.append(self._consume())
@@ -137,48 +162,59 @@ class Args:
     def _get_long(self) -> str | None:
         long_arg: list[str] = []
         while not self._at_end():
-            if self._match(","):
+            if self._match(self._delimiters.comma):
                 if long_arg == []:
-                    err(f"invalid long arg:\n  {self:c}")
+                    self._err("invalid long arg")
 
                 self._backtrack()
                 long_arg.pop(-1)
                 break
 
-            elif self._match_consume("."):
+            elif self._match_consume(self._delimiters.dot):
                 break
 
             else:
                 long_arg.append(self._consume())
 
-        if long_arg == []:
-            return None
-        return " ".join(long_arg)
+        return None if long_arg == [] else " ".join(long_arg)
 
     def _get_multi_long(self) -> list[str]:
-        if self._at_end() or self._match_consume("."):
+        if self._at_end() or self._match_consume(self._delimiters.dot):
             return []
 
-        multi_arg: list[str] = []
+        multi_args: list[str] = []
         long_arg: list[str] = []
-        while not self._at_end() and not self._match(","):
+        while not self._at_end() and not self._match(self._delimiters.comma):
             long_arg.append(self._consume())
-        multi_arg.append(" ".join(long_arg))
+        if long_arg == []:
+            self._err("invalid multi long arg")
+        multi_args.append(" ".join(long_arg))
         long_arg = []
 
-        while not self._at_end() and not self._match_consume("."):
-            if not self._match_consume(","):
+        while not self._at_end() and not self._match_consume(self._delimiters.dot):
+            if not self._match_consume(self._delimiters.comma):
                 break
 
-            if self._at_end() or self._match(",") or self._match("."):
+            if (
+                self._at_end()
+                or self._match(self._delimiters.comma)
+                or self._match(self._delimiters.dot)
+            ):
                 self._err("invalid multi long arg")
 
-            while not self._at_end() and not self._match(","):
+            long_arg.append(self._consume())
+            while (
+                not self._at_end()
+                and not self._match(self._delimiters.comma)
+                and not self._match(self._delimiters.dot)
+            ):
                 long_arg.append(self._consume())
-            multi_arg.append(" ".join(long_arg))
+            multi_args.append(" ".join(long_arg))
             long_arg = []
 
-        return multi_arg
+        if not self._at_end():
+            self._match_consume(self._delimiters.dot)
+        return multi_args
 
     def get(self, multi: bool = False, long: bool = False) -> str | list[str] | None:
         if not multi and not long:
