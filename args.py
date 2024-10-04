@@ -193,7 +193,7 @@ class Args:
 
         while not self._at_end() and not self._match_consume(self._delimiters.dot):
             if not self._match_consume(self._delimiters.comma):
-                break
+                break  # todo: is this possible to hit?
 
             if (
                 self._at_end()
