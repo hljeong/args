@@ -18,6 +18,9 @@ class Args:
         comma: str = ","
         dot: str = "."
 
+        def __post_init__(self):
+            assert self.comma != self.dot
+
         def __iter__(self):
             return iter({self.comma, self.dot})
 
@@ -261,20 +264,13 @@ class Args:
 
         elif check_validity:
             if multi:
-                invalid_args: list[str] = [
-                    an_arg for an_arg in arg if an_arg not in choices
-                ]
-                if len(invalid_args) == 1:
-                    err(f"invalid arg: '{arg[0]}' (select from {list(choices)})")
-
-                elif len(invalid_args) > 1:
-                    # ew
-                    squote: str = "'"
+                invalid_args: list[str] = [arg_ for arg_ in arg if arg_ not in choices]
+                if invalid_args:
                     err(
-                        f"invalid args: {', '.join(map(lambda an_arg: f'{squote}{an_arg}{squote}', arg))} (select from {list(choices)})"
+                        f"invalid arg{'' if len(invalid_args) == 1 else 's'}: {', '.join(arg)} (select from: {', '.join(choices)})"
                     )
 
             elif cast(str, arg) not in choices:
-                err(f"invalid arg: '{arg}' (select from {list(choices)})")
+                err(f"invalid arg: {arg} (select from: {', '.join(choices)})")
 
         return arg
